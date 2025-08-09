@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Needs Table</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        max-width: 800px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: monospace;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #999;
+        padding: 6px 10px;
+        text-align: left;
+      }
+      th {
+        background: #f2f2f2;
+      }
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 4px 6px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Needs Table</h2>
+
+    <table id="needs-table">
+      <thead>
+        <tr>
+          <th>Need</th>
+          <th>Bank/Account</th>
+          <th>Holder</th>
+          <th>Monthly Amount (₹)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="add-need-btn">Add Need</button>
+
+    <h3>Total Annual Withdrawal: ₹<span id="total-annual">0</span></h3>
+
+    <script>
+      const tableBody = document.querySelector("#needs-table tbody");
+      const totalAnnualSpan = document.getElementById("total-annual");
+
+      function addRow(data = {}) {
+        const tr = document.createElement("tr");
+
+        const needInput = document.createElement("input");
+        needInput.type = "text";
+        needInput.value = data.need || "";
+
+        const bankInput = document.createElement("input");
+        bankInput.type = "text";
+        bankInput.value = data.bank || "";
+
+        const holderInput = document.createElement("input");
+        holderInput.type = "text";
+        holderInput.value = data.holder || "";
+
+        const amountInput = document.createElement("input");
+        amountInput.type = "number";
+        amountInput.min = 0;
+        amountInput.step = 100;
+        amountInput.value = data.amount || 0;
+
+        amountInput.addEventListener("input", updateTotal);
+        needInput.addEventListener("input", updateTotal);
+        bankInput.addEventListener("input", updateTotal);
+        holderInput.addEventListener("input", updateTotal);
+
+        tr.appendChild(tdWrap(needInput));
+        tr.appendChild(tdWrap(bankInput));
+        tr.appendChild(tdWrap(holderInput));
+        tr.appendChild(tdWrap(amountInput));
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", () => {
+          tr.remove();
+          updateTotal();
+        });
+        tr.appendChild(tdWrap(delBtn));
+
+        tableBody.appendChild(tr);
+
+        updateTotal();
+      }
+
+      function tdWrap(content) {
+        const td = document.createElement("td");
+        if (content instanceof HTMLElement) td.appendChild(content);
+        else td.textContent = content;
+        return td;
+      }
+
+      function updateTotal() {
+        let total = 0;
+        const rows = tableBody.querySelectorAll("tr");
+        rows.forEach((tr) => {
+          const input = tr.querySelector("input[type='number']");
+          if (input) {
+            total += Number(input.value) || 0;
+          }
+        });
+        totalAnnualSpan.textContent = total * 12;
+      }
+
+      document.getElementById("add-need-btn").addEventListener("click", () => {
+        addRow();
+      });
+
+      // Add initial demo rows
+      [
+        {
+          need: "Home & Grocery",
+          bank: "ICICI - 7645",
+          holder: "Aae",
+          amount: 26000,
+        },
+        {
+          need: "Medical (Sonu and Swastika)",
+          bank: "ICICI - 334901500943",
+          holder: "Sonu",
+          amount: 5000,
+        },
+        {
+          need: "Bills, Fuel, Dining, etc (Swapnil)",
+          bank: "ICICI - 005901569471",
+          holder: "Swapnil",
+          amount: 5000,
+        },
+        {
+          need: "Ertiga EMI",
+          bank: "HDFC - 50100043328099",
+          holder: "Swapnil",
+          amount: 16000,
+        },
+        {
+          need: "Insurance",
+          bank: "HDFC - 50100043328099",
+          holder: "Swapnil",
+          amount: 8750,
+        },
+        {
+          need: "School Fees",
+          bank: "HDFC - 50100281146216",
+          holder: "Sonu",
+          amount: 5000,
+        },
+      ].forEach(addRow);
+    </script>
+  </body>
+</html>

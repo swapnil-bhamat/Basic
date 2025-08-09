@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Two-Bucket SWP Simulation with XIRR Amount Only</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        max-width: 1200px;
+      }
+      h2 {
+        margin-bottom: 8px;
+      }
+      label {
+        display: inline-block;
+        width: 170px;
+        margin-right: 10px;
+        font-weight: 600;
+      }
+      input[type="number"] {
+        width: 130px;
+        padding: 5px 8px;
+        margin-bottom: 10px;
+        font-family: monospace;
+      }
+      .input-row {
+        margin-bottom: 10px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: monospace;
+        margin-top: 20px;
+      }
+      th,
+      td {
+        border: 1px solid #999;
+        padding: 8px 12px;
+        text-align: right;
+      }
+      th {
+        background: #f2f2f2;
+      }
+      td:first-child,
+      th:first-child,
+      td:nth-child(2),
+      th:nth-child(2) {
+        text-align: center;
+      }
+      tbody tr:nth-child(even) {
+        background: #fafafa;
+      }
+      td[title] {
+        cursor: help;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Two-Bucket SWP Simulation with XIRR Amount Only</h2>
+
+    <div id="input-form">
+      <div class="input-row">
+        <label for="startYear">Start Year:</label>
+        <input
+          type="number"
+          id="startYear"
+          value="2025"
+          min="1900"
+          max="2100"
+        />
+        <label for="startMonth" style="margin-left: 30px"
+          >Start Month (0=Jan):</label
+        >
+        <input type="number" id="startMonth" value="7" min="0" max="11" />
+      </div>
+      <div class="input-row">
+        <label for="startAge">Start Age:</label>
+        <input type="number" id="startAge" value="35" min="0" max="120" />
+        <label for="endAge" style="margin-left: 30px">End Age:</label>
+        <input type="number" id="endAge" value="100" min="0" max="120" />
+      </div>
+      <div class="input-row">
+        <label for="startB1">Start Bucket 1 (₹):</label>
+        <input
+          type="number"
+          id="startB1"
+          value="3000000"
+          min="0"
+          step="10000"
+        />
+        <label for="startB2" style="margin-left: 30px"
+          >Start Bucket 2 (₹):</label
+        >
+        <input
+          type="number"
+          id="startB2"
+          value="9723000"
+          min="0"
+          step="10000"
+        />
+      </div>
+      <div class="input-row">
+        <label for="annualWithdrawal">Annual Withdrawal (₹):</label>
+        <input
+          type="number"
+          id="annualWithdrawal"
+          value="600000"
+          min="0"
+          step="1000"
+        />
+        <label for="inflation" style="margin-left: 30px"
+          >Inflation Rate (%):</label
+        >
+        <input
+          type="number"
+          id="inflation"
+          value="6"
+          min="0"
+          max="100"
+          step="0.1"
+        />
+      </div>
+      <div class="input-row">
+        <label for="returnB1">Return Bucket 1 (%):</label>
+        <input
+          type="number"
+          id="returnB1"
+          value="6"
+          min="0"
+          max="100"
+          step="0.1"
+        />
+        <label for="returnB2" style="margin-left: 30px"
+          >Return Bucket 2 (%):</label
+        >
+        <input
+          type="number"
+          id="returnB2"
+          value="11"
+          min="0"
+          max="100"
+          step="0.1"
+        />
+      </div>
+      <div class="input-row">
+        <label for="withdrawalMonth">Withdrawal Month (0=Jan):</label>
+        <input type="number" id="withdrawalMonth" value="8" min="0" max="11" />
+        <label for="sipMonthly" style="margin-left: 30px"
+          >Monthly SIP into B2 (₹):</label
+        >
+        <input
+          type="number"
+          id="sipMonthly"
+          value="50000"
+          min="0"
+          step="1000"
+        />
+      </div>
+      <div class="input-row">
+        <label for="sipYears">SIP Duration (years):</label>
+        <input type="number" id="sipYears" value="5" min="0" max="100" />
+      </div>
+    </div>
+
+    <div id="table-container">Loading…</div>
+
+    <script>
+      function xirr(cfs, guess = 0.1) {
+        const hasP = cfs.some((cf) => cf.amount > 0),
+          hasN = cfs.some((cf) => cf.amount < 0);
+        if (!hasP || !hasN) return 0;
+        function days(a, b) {
+          return (b - a) / (1000 * 60 * 60 * 24);
+        }
+        function npv(r) {
+          const t0 = cfs[0].date;
+          return cfs.reduce((s, { date, amount }) => {
+            return s + amount / Math.pow(1 + r, days(t0, date) / 365);
+          }, 0);
+        }
+        function dnpv(r) {
+          const t0 = cfs[0].date;
+          return cfs.reduce((s, { date, amount }) => {
+            const t = days(t0, date) / 365;
+            return s + (-t * amount) / Math.pow(1 + r, t + 1);
+          }, 0);
+        }
+        let rate = guess,
+          i = 0;
+        while (i++ < 50) {
+          const f = npv(rate),
+            df = dnpv(rate);
+          if (!isFinite(f) || df === 0) break;
+          const nxt = rate - f / df;
+          if (!isFinite(nxt)) break;
+          if (Math.abs(nxt - rate) < 1e-8) {
+            rate = nxt;
+            break;
+          }
+          rate = nxt;
+        }
+        return isFinite(rate) ? rate : 0;
+      }
+
+      function simulate(params = {}) {
+        const {
+          startYear = 2025,
+          startMonth = 7,
+          startAge = 35,
+          endAge = 100,
+          startB1 = 3000000,
+          startB2 = 9723000,
+          annualWithdrawal = 420000,
+          inflation = 0.06,
+          returnB1 = 0.06,
+          returnB2 = 0.11,
+          withdrawalMonth = 3,
+          sipMonthly = 0,
+          sipYears = 0,
+        } = params;
+
+        const totalMonths = (endAge - startAge + 1) * 12;
+        const mi = Math.pow(1 + inflation, 1 / 12) - 1;
+        const g1 = Math.pow(1 + returnB1, 1 / 12) - 1;
+        const g2 = Math.pow(1 + returnB2, 1 / 12) - 1;
+
+        let b1 = 0,
+          b2 = 0,
+          expM = 0,
+          b2ExclSip = 0,
+          lastRefill = 0;
+
+        const rows = [];
+        let swpFailed = false;
+
+        for (let m = 0; m < totalMonths; m++) {
+          const yIdx = Math.floor(m / 12),
+            year = startYear + yIdx,
+            age = startAge + yIdx,
+            mo = m % 12;
+
+          const started =
+            year > startYear || (year === startYear && mo >= startMonth);
+
+          if (mo === 0) {
+            var startVal1 = b1,
+              startVal2 = b2,
+              refillY = 0;
+
+            if (started) {
+              var cf1 = [{ date: new Date(year, 0, 1), amount: -startVal1 }],
+                cf2 = [{ date: new Date(year, 0, 1), amount: -startVal2 }];
+            } else if (year === startYear) {
+              var cf1 = [],
+                cf2 = [];
+            } else {
+              var cf1 = [{ date: new Date(year, 0, 1), amount: -startVal1 }],
+                cf2 = [{ date: new Date(year, 0, 1), amount: -startVal2 }];
+            }
+          }
+
+          if (started) {
+            if (m === startMonth + (startYear - startYear) * 12) {
+              b1 = startB1;
+              b2 = startB2;
+              b2ExclSip = startB2;
+              lastRefill = b2ExclSip;
+              expM = annualWithdrawal / 12;
+            }
+
+            if (yIdx < sipYears) {
+              b2 += sipMonthly;
+              b2ExclSip += sipMonthly;
+              cf2.push({ date: new Date(year, mo, 1), amount: -sipMonthly });
+            }
+
+            // Monthly growth
+            b1 += b1 * g1;
+            b2 += b2 * g2;
+            b2ExclSip += b2ExclSip * g2;
+
+            if (mo === withdrawalMonth) {
+              const ann = expM * 12,
+                dt = new Date(year, mo, 1);
+
+              b1 -= ann;
+              cf1.push({ date: dt, amount: +ann });
+
+              if (b1 < 0) {
+                const need = -b1,
+                  take = Math.min(need, b2);
+                b1 += take;
+                b2 -= take;
+                cf1.push({ date: dt, amount: -take });
+                cf2.push({ date: dt, amount: +take });
+              }
+
+              const pure = b2ExclSip - lastRefill;
+              if (pure >= ann) {
+                b1 += ann;
+                b2 -= ann;
+                b2ExclSip -= ann;
+                lastRefill = b2ExclSip;
+                refillY = ann;
+                cf1.push({ date: dt, amount: -ann });
+                cf2.push({ date: dt, amount: +ann });
+              }
+            }
+
+            expM *= 1 + mi;
+
+            if (b1 < 0 || b2 < 0) {
+              swpFailed = true;
+            }
+          }
+
+          if (mo === 11 && started) {
+            const ye = new Date(year, 11, 31);
+            cf1.push({ date: ye, amount: +b1 });
+            cf2.push({ date: ye, amount: +b2 });
+
+            const irr1 = xirr(cf1),
+              irr2 = xirr(cf2);
+            const amt1 = Math.round(startVal1 * irr1);
+            const amt2 = Math.round(startVal2 * irr2);
+
+            rows.push({
+              year,
+              age,
+              mon: Math.round(expM),
+              ann: Math.round(expM * 12),
+              b1: Math.round(b1),
+              xAmt1: amt1,
+              b2: Math.round(b2),
+              xAmt2: amt2,
+              ref: refillY,
+              sip: yIdx < sipYears ? sipMonthly * 12 : 0,
+            });
+          }
+        }
+
+        const html = `
+      <table>
+        <thead>
+          <tr>
+            <th>Year</th><th>Age</th>
+            <th>Monthly W (₹)</th><th>Annual W (₹)</th>
+            <th>B1 (₹)</th><th>XIRR Amt B1 (₹)</th>
+            <th>B2 (₹)</th><th>XIRR Amt B2 (₹)</th>
+            <th>Refill (₹)</th><th>SIP (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows
+            .map(
+              (r) => `
+            <tr>
+              <td>${r.year}</td>
+              <td>${r.age}</td>
+              <td title="Inflated monthly W">${r.mon.toLocaleString(
+                "en-IN"
+              )}</td>
+              <td title="×12">${r.ann.toLocaleString("en-IN")}</td>
+              <td title="End B1">${r.b1.toLocaleString("en-IN")}</td>
+              <td title="Start-of-year B1 × IRR">${r.xAmt1.toLocaleString(
+                "en-IN"
+              )}</td>
+              <td title="End B2">${r.b2.toLocaleString("en-IN")}</td>
+              <td title="Start-of-year B2 × IRR">${r.xAmt2.toLocaleString(
+                "en-IN"
+              )}</td>
+              <td title="Moved B2→B1">${r.ref.toLocaleString("en-IN")}</td>
+              <td title="Yearly SIP into B2">${r.sip.toLocaleString(
+                "en-IN"
+              )}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>`;
+
+        const messageHtml = swpFailed
+          ? `<p style="color:red; font-weight:bold;">SWP fails before age ${endAge} (bucket depleted).</p>`
+          : `<p style="color:green; font-weight:bold;">SWP is sustainable till age ${endAge}.</p>`;
+
+        document.getElementById("table-container").innerHTML =
+          messageHtml + html;
+      }
+
+      function getInputs() {
+        return {
+          startYear: Number(document.getElementById("startYear").value),
+          startMonth: Number(document.getElementById("startMonth").value),
+          startAge: Number(document.getElementById("startAge").value),
+          endAge: Number(document.getElementById("endAge").value),
+          startB1: Number(document.getElementById("startB1").value),
+          startB2: Number(document.getElementById("startB2").value),
+          annualWithdrawal: Number(
+            document.getElementById("annualWithdrawal").value
+          ),
+          inflation: Number(document.getElementById("inflation").value) / 100,
+          returnB1: Number(document.getElementById("returnB1").value) / 100,
+          returnB2: Number(document.getElementById("returnB2").value) / 100,
+          withdrawalMonth: Number(
+            document.getElementById("withdrawalMonth").value
+          ),
+          sipMonthly: Number(document.getElementById("sipMonthly").value),
+          sipYears: Number(document.getElementById("sipYears").value),
+        };
+      }
+
+      function onInputChange() {
+        const params = getInputs();
+
+        if (params.startAge >= params.endAge) {
+          document.getElementById("table-container").innerHTML =
+            "<p style='color:red;'>Error: Start Age must be less than End Age.</p>";
+          return;
+        }
+        if (params.startMonth < 0 || params.startMonth > 11) {
+          document.getElementById("table-container").innerHTML =
+            "<p style='color:red;'>Error: Start Month must be between 0 (Jan) and 11 (Dec).</p>";
+          return;
+        }
+        if (params.withdrawalMonth < 0 || params.withdrawalMonth > 11) {
+          document.getElementById("table-container").innerHTML =
+            "<p style='color:red;'>Error: Withdrawal Month must be between 0 (Jan) and 11 (Dec).</p>";
+          return;
+        }
+
+        simulate(params);
+      }
+
+      window.onload = () => {
+        const inputs = document.querySelectorAll("#input-form input");
+        inputs.forEach((input) =>
+          input.addEventListener("input", onInputChange)
+        );
+
+        onInputChange();
+      };
+    </script>
+  </body>
+</html>

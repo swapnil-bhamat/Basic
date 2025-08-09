@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Assets Management</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        max-width: 1200px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: monospace;
+        margin-top: 10px;
+      }
+      th,
+      td {
+        border: 1px solid #999;
+        padding: 6px 10px;
+        text-align: left;
+      }
+      th {
+        background: #f2f2f2;
+      }
+      select,
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 4px 6px;
+        box-sizing: border-box;
+      }
+      button {
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Assets Management</h2>
+
+    <table id="assets-table">
+      <thead>
+        <tr>
+          <th>Asset Class</th>
+          <th>Asset Sub Class</th>
+          <th>Goal (Bucket)</th>
+          <th>Holder</th>
+          <th>Asset Detail</th>
+          <th>Existing Allocation (₹)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <button id="add-asset-btn">Add Asset</button>
+
+    <script>
+      const assetClasses = [
+        "Equity",
+        "Debt",
+        "Liquid",
+        "Commodity",
+        "Real Estate",
+      ];
+      const assetSubClasses = {
+        Equity: ["Equity Mutual Funds", "Hybrid Mutual Funds", "NPS"],
+        Debt: ["Debt Mutual Fund", "EPF", "FD", "SSY"],
+        Liquid: ["Liquid Funds", "SA Balance"],
+        Commodity: ["Physical Gold"],
+        "Real Estate": ["REIT", "Flat", "Shop", "Plots"],
+      };
+      const goals = ["Bucket 1", "Bucket 2", ""];
+      const holders = ["Swapnil", "Sonu"];
+
+      const tableBody = document.querySelector("#assets-table tbody");
+
+      function createSelect(options, selected) {
+        const select = document.createElement("select");
+        options.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt;
+          option.textContent = opt;
+          if (opt === selected) option.selected = true;
+          select.appendChild(option);
+        });
+        return select;
+      }
+
+      function addRow(data = {}) {
+        const tr = document.createElement("tr");
+
+        // Asset Class select
+        const assetClassSel = createSelect(
+          assetClasses,
+          data.assetClass || assetClasses[0]
+        );
+        tr.appendChild(tdWrap(assetClassSel));
+
+        // Asset Sub Class select (dependent on Asset Class)
+        let assetSubClassSel = createSelect(
+          assetSubClasses[assetClassSel.value],
+          data.assetSubClass || assetSubClasses[assetClassSel.value][0]
+        );
+        tr.appendChild(tdWrap(assetSubClassSel));
+
+        // Update assetSubClassSel options on assetClass change
+        assetClassSel.addEventListener("change", () => {
+          const subs = assetSubClasses[assetClassSel.value];
+          assetSubClassSel.innerHTML = "";
+          subs.forEach((sub) => {
+            const option = document.createElement("option");
+            option.value = sub;
+            option.textContent = sub;
+            assetSubClassSel.appendChild(option);
+          });
+        });
+
+        // Goal select
+        const goalSel = createSelect(goals, data.goal || "");
+        tr.appendChild(tdWrap(goalSel));
+
+        // Holder select
+        const holderSel = createSelect(holders, data.holder || holders[0]);
+        tr.appendChild(tdWrap(holderSel));
+
+        // Asset Detail input text
+        const assetDetailInput = document.createElement("input");
+        assetDetailInput.type = "text";
+        assetDetailInput.value = data.assetDetail || "";
+        tr.appendChild(tdWrap(assetDetailInput));
+
+        // Existing Allocation input number
+        const existingAllocInput = document.createElement("input");
+        existingAllocInput.type = "number";
+        existingAllocInput.min = 0;
+        existingAllocInput.step = 100;
+        existingAllocInput.value = data.existingAllocation || 0;
+        tr.appendChild(tdWrap(existingAllocInput));
+
+        // Delete button
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.addEventListener("click", () => {
+          tr.remove();
+        });
+        tr.appendChild(tdWrap(delBtn));
+
+        tableBody.appendChild(tr);
+      }
+
+      function tdWrap(content) {
+        const td = document.createElement("td");
+        if (content instanceof HTMLElement) td.appendChild(content);
+        else td.textContent = content;
+        return td;
+      }
+
+      document.getElementById("add-asset-btn").addEventListener("click", () => {
+        addRow();
+      });
+
+      // Load some demo data
+      [
+        {
+          assetClass: "Equity",
+          assetSubClass: "Equity Mutual Funds",
+          goal: "Bucket 1",
+          holder: "Swapnil",
+          assetDetail: "Parag Parikh Flexi Cap Fund",
+          existingAllocation: 2257750,
+        },
+        {
+          assetClass: "Debt",
+          assetSubClass: "FD",
+          goal: "Bucket 2",
+          holder: "Swapnil",
+          assetDetail: "SBI",
+          existingAllocation: 894569,
+        },
+        {
+          assetClass: "Commodity",
+          assetSubClass: "Physical Gold",
+          goal: "Bucket 2",
+          holder: "Sonu",
+          assetDetail: "Gold Bangles 24K (100 gm)",
+          existingAllocation: 965300,
+        },
+      ].forEach(addRow);
+    </script>
+  </body>
+</html>
