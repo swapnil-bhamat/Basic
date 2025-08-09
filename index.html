@@ -55,10 +55,17 @@
       td[title] {
         cursor: help;
       }
+      nav a {
+        margin-right: 20px;
+      }
     </style>
   </head>
   <body>
     <h2>Two-Bucket SWP Simulation with XIRR Amount Only</h2>
+    <nav>
+      <a href="assets.html">Go to Assets</a>
+      <a href="needs.html">Go to Needs</a>
+    </nav>
 
     <div id="input-form">
       <div class="input-row">
@@ -202,6 +209,47 @@
           rate = nxt;
         }
         return isFinite(rate) ? rate : 0;
+      }
+
+      // LocalStorage keys
+      const assetsKey = "assetsData";
+      const needsKey = "needsData";
+
+      // Read assets data from localStorage
+      function getAssetsFromStorage() {
+        const dataStr = localStorage.getItem(assetsKey);
+        return dataStr ? JSON.parse(dataStr) : [];
+      }
+
+      // Read needs data from localStorage
+      function getNeedsFromStorage() {
+        const dataStr = localStorage.getItem(needsKey);
+        return dataStr ? JSON.parse(dataStr) : [];
+      }
+
+      // Calculate total annual withdrawal from needs data
+      function getAnnualWithdrawalFromNeeds() {
+        const needs = getNeedsFromStorage();
+        if (!needs.length) return 0;
+        const totalMonthly = needs.reduce(
+          (sum, n) => sum + (Number(n.monthlyAmount) || 0),
+          0
+        );
+        return totalMonthly * 12;
+      }
+
+      // Calculate bucket start amounts from assets data
+      function calculateBucketStarts() {
+        const assets = getAssetsFromStorage();
+        let bucket1 = 0,
+          bucket2 = 0;
+        assets.forEach((a) => {
+          if (a.goal === "Bucket 1")
+            bucket1 += Number(a.existingAllocation) || 0;
+          else if (a.goal === "Bucket 2")
+            bucket2 += Number(a.existingAllocation) || 0;
+        });
+        return { bucket1, bucket2 };
       }
 
       function simulate(params = {}) {
@@ -434,6 +482,17 @@
       }
 
       window.onload = () => {
+        // Load from storage first
+        const needsAnnualWithdrawal = getAnnualWithdrawalFromNeeds();
+        if (needsAnnualWithdrawal > 0) {
+          document.getElementById("annualWithdrawal").value =
+            needsAnnualWithdrawal;
+        }
+
+        const { bucket1, bucket2 } = calculateBucketStarts();
+        if (bucket1 > 0) document.getElementById("startB1").value = bucket1;
+        if (bucket2 > 0) document.getElementById("startB2").value = bucket2;
+
         const inputs = document.querySelectorAll("#input-form input");
         inputs.forEach((input) =>
           input.addEventListener("input", onInputChange)

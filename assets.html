@@ -6,14 +6,14 @@
     <style>
       body {
         font-family: Arial, sans-serif;
-        margin: 20px;
-        max-width: 1200px;
+        max-width: 1000px;
+        margin: 20px auto;
       }
       table {
         width: 100%;
         border-collapse: collapse;
+        margin-top: 15px;
         font-family: monospace;
-        margin-top: 10px;
       }
       th,
       td {
@@ -22,172 +22,241 @@
         text-align: left;
       }
       th {
-        background: #f2f2f2;
+        background: #eee;
       }
       select,
       input[type="text"],
       input[type="number"] {
         width: 100%;
-        padding: 4px 6px;
+        padding: 5px;
         box-sizing: border-box;
       }
       button {
         margin-top: 10px;
+        padding: 6px 12px;
+      }
+      nav a {
+        margin-right: 15px;
       }
     </style>
   </head>
   <body>
     <h2>Assets Management</h2>
+    <nav>
+      <a href="needs.html">Go to Needs</a>
+      <a href="index.html">Go to SWP Simulation</a>
+    </nav>
 
-    <table id="assets-table">
+    <table id="assetsTable">
       <thead>
         <tr>
           <th>Asset Class</th>
           <th>Asset Sub Class</th>
-          <th>Goal (Bucket)</th>
+          <th>Goal (Bucket 1/2)</th>
           <th>Holder</th>
           <th>Asset Detail</th>
           <th>Existing Allocation (₹)</th>
-          <th>Action</th>
+          <th>Actions</th>
+        </tr>
+        <tr id="inputRow">
+          <td>
+            <select id="assetClassSelect">
+              <option value="">--Select--</option>
+              <option>Equity</option>
+              <option>Debt</option>
+              <option>Liquid</option>
+              <option>Commodity</option>
+              <option>Real Estate</option>
+            </select>
+          </td>
+          <td>
+            <select id="assetSubClassSelect">
+              <option value="">--Select--</option>
+              <option>Equity Mutual Funds</option>
+              <option>Hybrid Mutual Funds</option>
+              <option>NPS</option>
+              <option>EPF</option>
+              <option>FD</option>
+              <option>SSY</option>
+              <option>Debt Mutual Fund</option>
+              <option>Liquid Funds</option>
+              <option>SA Balance</option>
+              <option>Physical Gold</option>
+              <option>REIT</option>
+              <option>Flat</option>
+              <option>Shop</option>
+              <option>Plots</option>
+            </select>
+          </td>
+          <td>
+            <select id="goalSelect">
+              <option value="">--Select--</option>
+              <option value="Bucket 1">Bucket 1</option>
+              <option value="Bucket 2">Bucket 2</option>
+            </select>
+          </td>
+          <td>
+            <select id="holderSelect">
+              <option value="">--Select--</option>
+              <option>Swapnil</option>
+              <option>Sonu</option>
+              <option>Swastika</option>
+            </select>
+          </td>
+          <td>
+            <input
+              type="text"
+              id="assetDetailInput"
+              placeholder="Asset Detail"
+            />
+          </td>
+          <td>
+            <input
+              type="number"
+              id="existingAllocationInput"
+              min="0"
+              step="1000"
+              placeholder="Amount in ₹"
+            />
+          </td>
+          <td><button id="addAssetBtn">Add</button></td>
         </tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="assetsBody"></tbody>
     </table>
 
-    <button id="add-asset-btn">Add Asset</button>
-
     <script>
-      const assetClasses = [
-        "Equity",
-        "Debt",
-        "Liquid",
-        "Commodity",
-        "Real Estate",
-      ];
-      const assetSubClasses = {
-        Equity: ["Equity Mutual Funds", "Hybrid Mutual Funds", "NPS"],
-        Debt: ["Debt Mutual Fund", "EPF", "FD", "SSY"],
-        Liquid: ["Liquid Funds", "SA Balance"],
-        Commodity: ["Physical Gold"],
-        "Real Estate": ["REIT", "Flat", "Shop", "Plots"],
-      };
-      const goals = ["Bucket 1", "Bucket 2", ""];
-      const holders = ["Swapnil", "Sonu"];
+      const assetsKey = "assetsData";
 
-      const tableBody = document.querySelector("#assets-table tbody");
-
-      function createSelect(options, selected) {
-        const select = document.createElement("select");
-        options.forEach((opt) => {
-          const option = document.createElement("option");
-          option.value = opt;
-          option.textContent = opt;
-          if (opt === selected) option.selected = true;
-          select.appendChild(option);
-        });
-        return select;
+      // Load assets from localStorage or empty
+      function loadAssets() {
+        const data = localStorage.getItem(assetsKey);
+        return data ? JSON.parse(data) : [];
       }
 
-      function addRow(data = {}) {
-        const tr = document.createElement("tr");
+      // Save assets to localStorage
+      function saveAssets(data) {
+        localStorage.setItem(assetsKey, JSON.stringify(data));
+      }
 
-        // Asset Class select
-        const assetClassSel = createSelect(
-          assetClasses,
-          data.assetClass || assetClasses[0]
+      function renderAssets() {
+        const tbody = document.getElementById("assetsBody");
+        const assets = loadAssets();
+        tbody.innerHTML = "";
+        assets.forEach((a, i) => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+          <td>${a.assetClass}</td>
+          <td>${a.assetSubClass}</td>
+          <td>${a.goal}</td>
+          <td>${a.holder}</td>
+          <td>${a.assetDetail}</td>
+          <td style="text-align:right;">${Number(
+            a.existingAllocation
+          ).toLocaleString("en-IN")}</td>
+          <td>
+            <button onclick="editAsset(${i})">Edit</button>
+            <button onclick="deleteAsset(${i})">Delete</button>
+          </td>
+        `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      function clearInputFields() {
+        document.getElementById("assetClassSelect").value = "";
+        document.getElementById("assetSubClassSelect").value = "";
+        document.getElementById("goalSelect").value = "";
+        document.getElementById("holderSelect").value = "";
+        document.getElementById("assetDetailInput").value = "";
+        document.getElementById("existingAllocationInput").value = "";
+        editingIndex = -1;
+        document.getElementById("addAssetBtn").textContent = "Add";
+      }
+
+      let editingIndex = -1;
+
+      document.getElementById("addAssetBtn").addEventListener("click", () => {
+        const assetClass = document
+          .getElementById("assetClassSelect")
+          .value.trim();
+        const assetSubClass = document
+          .getElementById("assetSubClassSelect")
+          .value.trim();
+        const goal = document.getElementById("goalSelect").value.trim();
+        const holder = document.getElementById("holderSelect").value.trim();
+        const assetDetail = document
+          .getElementById("assetDetailInput")
+          .value.trim();
+        const existingAllocation = Number(
+          document.getElementById("existingAllocationInput").value
         );
-        tr.appendChild(tdWrap(assetClassSel));
 
-        // Asset Sub Class select (dependent on Asset Class)
-        let assetSubClassSel = createSelect(
-          assetSubClasses[assetClassSel.value],
-          data.assetSubClass || assetSubClasses[assetClassSel.value][0]
-        );
-        tr.appendChild(tdWrap(assetSubClassSel));
+        if (
+          !assetClass ||
+          !assetSubClass ||
+          !goal ||
+          !holder ||
+          !assetDetail ||
+          !existingAllocation ||
+          existingAllocation < 0
+        ) {
+          alert("Please fill all fields with valid values.");
+          return;
+        }
 
-        // Update assetSubClassSel options on assetClass change
-        assetClassSel.addEventListener("change", () => {
-          const subs = assetSubClasses[assetClassSel.value];
-          assetSubClassSel.innerHTML = "";
-          subs.forEach((sub) => {
-            const option = document.createElement("option");
-            option.value = sub;
-            option.textContent = sub;
-            assetSubClassSel.appendChild(option);
+        const assets = loadAssets();
+
+        if (editingIndex === -1) {
+          assets.push({
+            assetClass,
+            assetSubClass,
+            goal,
+            holder,
+            assetDetail,
+            existingAllocation,
           });
-        });
+        } else {
+          assets[editingIndex] = {
+            assetClass,
+            assetSubClass,
+            goal,
+            holder,
+            assetDetail,
+            existingAllocation,
+          };
+        }
 
-        // Goal select
-        const goalSel = createSelect(goals, data.goal || "");
-        tr.appendChild(tdWrap(goalSel));
-
-        // Holder select
-        const holderSel = createSelect(holders, data.holder || holders[0]);
-        tr.appendChild(tdWrap(holderSel));
-
-        // Asset Detail input text
-        const assetDetailInput = document.createElement("input");
-        assetDetailInput.type = "text";
-        assetDetailInput.value = data.assetDetail || "";
-        tr.appendChild(tdWrap(assetDetailInput));
-
-        // Existing Allocation input number
-        const existingAllocInput = document.createElement("input");
-        existingAllocInput.type = "number";
-        existingAllocInput.min = 0;
-        existingAllocInput.step = 100;
-        existingAllocInput.value = data.existingAllocation || 0;
-        tr.appendChild(tdWrap(existingAllocInput));
-
-        // Delete button
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Delete";
-        delBtn.addEventListener("click", () => {
-          tr.remove();
-        });
-        tr.appendChild(tdWrap(delBtn));
-
-        tableBody.appendChild(tr);
-      }
-
-      function tdWrap(content) {
-        const td = document.createElement("td");
-        if (content instanceof HTMLElement) td.appendChild(content);
-        else td.textContent = content;
-        return td;
-      }
-
-      document.getElementById("add-asset-btn").addEventListener("click", () => {
-        addRow();
+        saveAssets(assets);
+        renderAssets();
+        clearInputFields();
       });
 
-      // Load some demo data
-      [
-        {
-          assetClass: "Equity",
-          assetSubClass: "Equity Mutual Funds",
-          goal: "Bucket 1",
-          holder: "Swapnil",
-          assetDetail: "Parag Parikh Flexi Cap Fund",
-          existingAllocation: 2257750,
-        },
-        {
-          assetClass: "Debt",
-          assetSubClass: "FD",
-          goal: "Bucket 2",
-          holder: "Swapnil",
-          assetDetail: "SBI",
-          existingAllocation: 894569,
-        },
-        {
-          assetClass: "Commodity",
-          assetSubClass: "Physical Gold",
-          goal: "Bucket 2",
-          holder: "Sonu",
-          assetDetail: "Gold Bangles 24K (100 gm)",
-          existingAllocation: 965300,
-        },
-      ].forEach(addRow);
+      function editAsset(i) {
+        const assets = loadAssets();
+        const a = assets[i];
+        document.getElementById("assetClassSelect").value = a.assetClass;
+        document.getElementById("assetSubClassSelect").value = a.assetSubClass;
+        document.getElementById("goalSelect").value = a.goal;
+        document.getElementById("holderSelect").value = a.holder;
+        document.getElementById("assetDetailInput").value = a.assetDetail;
+        document.getElementById("existingAllocationInput").value =
+          a.existingAllocation;
+        editingIndex = i;
+        document.getElementById("addAssetBtn").textContent = "Update";
+      }
+
+      function deleteAsset(i) {
+        if (!confirm("Delete this asset?")) return;
+        const assets = loadAssets();
+        assets.splice(i, 1);
+        saveAssets(assets);
+        renderAssets();
+        clearInputFields();
+      }
+
+      // Initial render
+      renderAssets();
     </script>
   </body>
 </html>
